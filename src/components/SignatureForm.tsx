@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PDFViewer, PDFButton } from './PDFViewer'
+import { PDFViewer } from './PDFViewer'
 import { submitSignature, type ContractSignature } from '../lib/supabase'
 import { CheckCircle, AlertCircle, Loader2, Send } from 'lucide-react'
 
@@ -98,6 +98,15 @@ export function SignatureForm() {
     }
   }
 
+  useEffect(() => {
+    if (submitStatus === 'success') {
+      const timer = setTimeout(() => {
+        window.location.href = 'https://app.clickon.it.com/Account/SignIn?ReturnUrl=%2F'
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [submitStatus])
+
   if (submitStatus === 'success') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -108,6 +117,9 @@ export function SignatureForm() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Merci !</h2>
           <p className="text-gray-600">
             Votre signature a été enregistrée avec succès. Vous recevrez une confirmation par courriel.
+          </p>
+          <p className="text-sm text-gray-500 mt-4">
+            Vous serez redirigé automatiquement dans 5 secondes...
           </p>
         </div>
       </div>
@@ -128,14 +140,6 @@ export function SignatureForm() {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PDF Section */}
-            <div className="space-y-3">
-              <label className="block text-sm font-semibold text-gray-700">
-                Document contractuel
-              </label>
-              <PDFButton onClick={() => setIsPDFOpen(true)} />
-            </div>
-
             {/* Personal Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
@@ -225,7 +229,19 @@ export function SignatureForm() {
                   required
                 />
                 <span className="text-sm text-gray-700">
-                  Je déclare avoir lu et compris l'intégralité du contrat présenté ci-dessus et j'accepte d'être lié(e) par ses termes et conditions. <span className="text-red-500">*</span>
+                  En cochant cette case, j'accepte l'{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsPDFOpen(true)
+                    }}
+                    className="text-primary-600 hover:text-primary-800 underline font-medium"
+                  >
+                  entente de service
+                  </button>
+                  . <span className="text-red-500">*</span>
                 </span>
               </label>
 
