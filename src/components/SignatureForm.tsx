@@ -10,10 +10,12 @@ interface FormData {
   lastName: string
   email: string
   phone: string
+  streetAddress: string
+  city: string
+  province: string
+  postalCode: string
   acceptanceText: string
-  acceptedTerms: boolean
   acceptedContract: boolean
-  acceptedDataProcessing: boolean
 }
 
 const initialFormData: FormData = {
@@ -21,10 +23,12 @@ const initialFormData: FormData = {
   lastName: '',
   email: '',
   phone: '',
+  streetAddress: '',
+  city: '',
+  province: '',
+  postalCode: '',
   acceptanceText: '',
-  acceptedTerms: false,
   acceptedContract: false,
-  acceptedDataProcessing: false,
 }
 
 export function SignatureForm() {
@@ -43,8 +47,8 @@ export function SignatureForm() {
       .catch(() => setIpAddress('unknown'))
   }, [])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type, checked } = e.target as HTMLInputElement
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -58,10 +62,12 @@ export function SignatureForm() {
     formData.lastName.trim() !== '' &&
     formData.email.trim() !== '' &&
     formData.phone.trim() !== '' &&
+    formData.streetAddress.trim() !== '' &&
+    formData.city.trim() !== '' &&
+    formData.province.trim() !== '' &&
+    formData.postalCode.trim() !== '' &&
     isAcceptanceValid &&
-    formData.acceptedTerms &&
-    formData.acceptedContract &&
-    formData.acceptedDataProcessing
+    formData.acceptedContract
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,10 +83,12 @@ export function SignatureForm() {
       last_name: formData.lastName,
       email: formData.email,
       phone: formData.phone,
+      street_address: formData.streetAddress,
+      city: formData.city,
+      province: formData.province,
+      postal_code: formData.postalCode,
       acceptance_text: formData.acceptanceText,
-      accepted_terms: formData.acceptedTerms,
       accepted_contract: formData.acceptedContract,
-      accepted_data_processing: formData.acceptedDataProcessing,
       ip_address: ipAddress,
       user_agent: navigator.userAgent,
       signed_at: new Date().toISOString(),
@@ -211,6 +219,85 @@ export function SignatureForm() {
                   required
                 />
               </div>
+
+              <div>
+                <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700 mb-1">
+                  Adresse <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="streetAddress"
+                  name="streetAddress"
+                  value={formData.streetAddress}
+                  onChange={handleInputChange}
+                  className="input-field"
+                  placeholder="123 rue Principale"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ville <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className="input-field"
+                    placeholder="Montréal"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-1">
+                    Province <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="province"
+                    name="province"
+                    value={formData.province}
+                    onChange={handleInputChange}
+                    className="input-field"
+                    required
+                  >
+                    <option value="">Sélectionner...</option>
+                    <option value="Alberta">Alberta</option>
+                    <option value="Colombie-Britannique">Colombie-Britannique</option>
+                    <option value="Île-du-Prince-Édouard">Île-du-Prince-Édouard</option>
+                    <option value="Manitoba">Manitoba</option>
+                    <option value="Nouveau-Brunswick">Nouveau-Brunswick</option>
+                    <option value="Nouvelle-Écosse">Nouvelle-Écosse</option>
+                    <option value="Ontario">Ontario</option>
+                    <option value="Québec">Québec</option>
+                    <option value="Saskatchewan">Saskatchewan</option>
+                    <option value="Terre-Neuve-et-Labrador">Terre-Neuve-et-Labrador</option>
+                    <option value="Nunavut">Nunavut</option>
+                    <option value="Territoires du Nord-Ouest">Territoires du Nord-Ouest</option>
+                    <option value="Yukon">Yukon</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-1">
+                    Code postal <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleInputChange}
+                    className="input-field"
+                    placeholder="H2X 1Y4"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Checkboxes */}
@@ -237,39 +324,11 @@ export function SignatureForm() {
                       e.stopPropagation()
                       setIsPDFOpen(true)
                     }}
-                    className="text-primary-600 hover:text-primary-800 underline font-medium"
+                    className="text-primary-600 hover:text-primary-800 underline font-medium hover:pointer"
                   >
                   entente de service
                   </button>
                   . <span className="text-red-500">*</span>
-                </span>
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="acceptedTerms"
-                  checked={formData.acceptedTerms}
-                  onChange={handleInputChange}
-                  className="checkbox-input"
-                  required
-                />
-                <span className="text-sm text-gray-700">
-                  Je reconnais que cette signature électronique a la même valeur juridique qu'une signature manuscrite conformément à la Loi concernant le cadre juridique des technologies de l'information (LCCJTI). <span className="text-red-500">*</span>
-                </span>
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  name="acceptedDataProcessing"
-                  checked={formData.acceptedDataProcessing}
-                  onChange={handleInputChange}
-                  className="checkbox-input"
-                  required
-                />
-                <span className="text-sm text-gray-700">
-                  J'accepte que mes données personnelles soient collectées et traitées aux fins d'exécution du présent contrat, conformément à notre politique de confidentialité. <span className="text-red-500">*</span>
                 </span>
               </label>
             </div>

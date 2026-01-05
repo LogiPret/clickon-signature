@@ -18,10 +18,12 @@ export interface ContractSignature {
   last_name: string
   email: string
   phone: string
+  street_address: string
+  city: string
+  province: string
+  postal_code: string
   acceptance_text: string
-  accepted_terms: boolean
   accepted_contract: boolean
-  accepted_data_processing: boolean
   ip_address?: string
   user_agent?: string
   signed_at: string
