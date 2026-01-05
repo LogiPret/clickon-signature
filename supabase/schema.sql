@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS contract_signatures (
   postal_code TEXT NOT NULL,
   acceptance_text TEXT NOT NULL,
   accepted_contract BOOLEAN NOT NULL DEFAULT FALSE,
+  pdf_url TEXT,
   ip_address TEXT,
   user_agent TEXT,
   signed_at TIMESTAMPTZ NOT NULL,
@@ -55,3 +56,20 @@ ALTER TABLE contract_signatures
 
 -- Comment on table
 COMMENT ON TABLE contract_signatures IS 'Stores electronic contract signatures with legal compliance data';
+
+-- Create storage bucket for PDF files
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('contract-pdfs', 'contract-pdfs', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage policy: Allow anonymous users to upload PDFs
+CREATE POLICY "Allow anonymous uploads" ON storage.objects
+  FOR INSERT
+  TO anon
+  WITH CHECK (bucket_id = 'contract-pdfs');
+
+-- Storage policy: Allow public read access to PDFs
+CREATE POLICY "Allow public reads" ON storage.objects
+  FOR SELECT
+  TO public
+  USING (bucket_id = 'contract-pdfs');

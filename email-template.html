@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation de signature</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header with Logo -->
+          <tr>
+            <td align="center" style="padding: 40px 40px 20px 40px;">
+              <img src="https://www.clickon.solutions/clickon-logo.png" alt="ClickOn" style="height: 48px; width: auto;">
+            </td>
+          </tr>
+          
+          <!-- Yellow accent bar -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <div style="height: 4px; background-color: #fbb624; border-radius: 2px;"></div>
+            </td>
+          </tr>
+          
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 30px 40px;">
+              <h1 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 700; color: #111827;">
+                Confirmation de signature
+              </h1>
+              
+              <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.6; color: #374151;">
+                Bonjour {{ $('Receive info when form completed').item.json.body.firstName }},
+              </p>
+              
+              <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.6; color: #374151;">
+                Nous vous confirmons que votre contrat a été signé avec succès le <strong>{{ $('Receive info when form completed').item.json.body.signedAt }}</strong>.
+              </p>
+              
+              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #374151;">
+                Vous trouverez ci-joint une copie de votre contrat signé pour vos dossiers.
+              </p>
+              
+              <!-- Info Box -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #fef9e7; border-radius: 8px; border-left: 4px solid #fbb624;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <p style="margin: 0; font-size: 14px; color: #92400e;">
+                      Conservez ce courriel et le document PDF joint comme preuve de votre signature électronique.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px 40px 40px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">
+                Cordialement,
+              </p>
+              <p style="margin: 0 0 16px 0; font-size: 14px; font-weight: 600; color: #111827;">
+                L'équipe ClickOn
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+        
+        <!-- Footer Links -->
+        <table role="presentation" style="width: 100%; max-width: 600px; border-collapse: collapse;">
+          <tr>
+            <td align="center" style="padding: 20px;">
+              <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                © 2026 ClickOn Solutions. Tous droits réservés.
+              </p>
+            </td>
+          </tr>
+        </table>
+        
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

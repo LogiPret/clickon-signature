@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PDFViewer } from './PDFViewer'
 import { submitSignature, type ContractSignature } from '../lib/supabase'
+import { fillPdfFormFields } from '../lib/pdfFiller'
 import { CheckCircle, AlertCircle, Loader2, Send } from 'lucide-react'
 
-const PDF_URL = '/contract.pdf'
+const PDF_URL = '/contrat-template.pdf'
+const N8N_WEBHOOK_URL = 'https://n8n-wwfb.onrender.com/webhook/384f4150-da78-4dd8-afc9-68bc80ffa6c3'
 
 interface FormData {
   firstName: string
@@ -34,10 +36,32 @@ const initialFormData: FormData = {
 export function SignatureForm() {
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [isPDFOpen, setIsPDFOpen] = useState(false)
+  const [filledPdfUrl, setFilledPdfUrl] = useState<string>('')
+  const [filledPdfBlob, setFilledPdfBlob] = useState<Blob | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [ipAddress, setIpAddress] = useState<string>('')
+  const [highlightMissing, setHighlightMissing] = useState(false)
+  const firstMissingFieldRef = useRef<HTMLElement | null>(null)
+
+  const setFirstMissingFieldRefCallback = (el: HTMLElement | null) => {
+    firstMissingFieldRef.current = el
+  }
+
+  const formatPhoneNumber = (phone: string): string => {
+    // Remove all non-digit characters
+    const digits = phone.replace(/\D/g, '')
+    // Ensure it starts with 1 and has 11 digits total
+    if (digits.length === 10) {
+      return '1' + digits
+    }
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return digits
+    }
+    // If it doesn't match expected format, just return digits with 1 prefix
+    return '1' + digits.slice(-10)
+  }
 
   useEffect(() => {
     // Fetch user's IP address
@@ -47,15 +71,118 @@ export function SignatureForm() {
       .catch(() => setIpAddress('unknown'))
   }, [])
 
+  // Generate filled PDF when user data is available
+  useEffect(() => {
+    const generateFilledPdf = async () => {
+      // Only generate if we have at least first and last name
+      if (formData.firstName && formData.lastName) {
+        try {
+          const blob = await fillPdfFormFields(PDF_URL, {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            streetAddress: formData.streetAddress,
+            city: formData.city,
+            province: formData.province,
+            postalCode: formData.postalCode,
+            phone: formData.phone,
+            email: formData.email,
+          })
+          
+          // Store blob for email sending
+          setFilledPdfBlob(blob)
+          
+          // Create URL from blob and clean up previous one
+          if (filledPdfUrl) {
+            URL.revokeObjectURL(filledPdfUrl)
+          }
+          const url = URL.createObjectURL(blob)
+          setFilledPdfUrl(url)
+        } catch (error) {
+          console.error('Error generating filled PDF:', error)
+          // Fall back to original PDF if filling fails
+          setFilledPdfUrl(PDF_URL)
+          setFilledPdfBlob(null)
+        }
+      } else {
+        // Use original PDF if no client data
+        setFilledPdfUrl(PDF_URL)
+        setFilledPdfBlob(null)
+      }
+    }
+
+    generateFilledPdf()
+
+    // Cleanup: revoke object URL when component unmounts
+    return () => {
+      if (filledPdfUrl && filledPdfUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(filledPdfUrl)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.firstName, formData.lastName, formData.streetAddress, formData.city, formData.province, formData.postalCode, formData.phone, formData.email])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+    // Clear highlight when user starts typing
+    if (highlightMissing) {
+      setHighlightMissing(false)
+    }
   }
 
-  const isAcceptanceValid = formData.acceptanceText.trim().length > 0
+  const isFormDataComplete = 
+    formData.firstName.trim() !== '' &&
+    formData.lastName.trim() !== '' &&
+    formData.email.trim() !== '' &&
+    formData.phone.trim() !== '' &&
+    formData.streetAddress.trim() !== '' &&
+    formData.city.trim() !== '' &&
+    formData.province.trim() !== ''
+
+  const handlePDFClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!isFormDataComplete) {
+      setHighlightMissing(true)
+      // Scroll to first missing field
+      setTimeout(() => {
+        if (firstMissingFieldRef.current) {
+          firstMissingFieldRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          firstMissingFieldRef.current.focus()
+        }
+      }, 100)
+      return
+    }
+    
+    setIsPDFOpen(true)
+  }
+
+  const getFieldClass = (fieldName: keyof FormData) => {
+    const isEmpty = !formData[fieldName] || formData[fieldName].toString().trim() === ''
+    if (highlightMissing && isEmpty) {
+      return 'input-field border-red-500 bg-red-50'
+    }
+    return 'input-field'
+  }
+
+  const isFirstMissingField = (fieldName: keyof FormData) => {
+    const missingFields: (keyof FormData)[] = []
+    const fieldsToCheck: (keyof FormData)[] = ['firstName', 'lastName', 'email', 'phone', 'streetAddress', 'city', 'province', 'postalCode']
+    
+    fieldsToCheck.forEach(field => {
+      if (!formData[field] || formData[field].toString().trim() === '') {
+        missingFields.push(field)
+      }
+    })
+    
+    return missingFields.length > 0 && missingFields[0] === fieldName
+  }
+
+  const isAcceptanceValid = formData.acceptanceText.trim().toLowerCase() === "j'accepte"
   
   const isFormValid = 
     formData.firstName.trim() !== '' &&
@@ -78,11 +205,14 @@ export function SignatureForm() {
     setSubmitStatus('idle')
     setErrorMessage('')
 
+    const formattedPhone = formatPhoneNumber(formData.phone)
+    const consolidatedAddress = `${formData.streetAddress}, ${formData.city}, ${formData.province} ${formData.postalCode}`
+
     const signature: ContractSignature = {
       first_name: formData.firstName,
       last_name: formData.lastName,
       email: formData.email,
-      phone: formData.phone,
+      phone: formattedPhone,
       street_address: formData.streetAddress,
       city: formData.city,
       province: formData.province,
@@ -94,16 +224,46 @@ export function SignatureForm() {
       signed_at: new Date().toISOString(),
     }
 
-    const result = await submitSignature(signature)
-
-    setIsSubmitting(false)
+    // Submit to Supabase (includes PDF upload)
+    const result = await submitSignature(signature, filledPdfBlob || undefined)
 
     if (result.success) {
+      // Send all data to n8n webhook for Monday integration
+      try {
+        const n8nResponse = await fetch(N8N_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            phone: formattedPhone,
+            email: formData.email,
+            signedAt: new Date().toISOString().split('T')[0],
+            address: consolidatedAddress,
+            acceptanceText: formData.acceptanceText,
+            ipAddress: ipAddress,
+            pdfUrl: result.pdfUrl,
+          }),
+        })
+
+        if (!n8nResponse.ok) {
+          console.error('n8n webhook failed:', await n8nResponse.text())
+          // Don't fail the whole submission if webhook fails
+        }
+      } catch (error) {
+        console.error('Error sending to n8n:', error)
+        // Don't fail the whole submission if webhook fails
+      }
+
       setSubmitStatus('success')
     } else {
       setSubmitStatus('error')
       setErrorMessage(result.error || 'Une erreur est survenue.')
     }
+
+    setIsSubmitting(false)
   }
 
   useEffect(() => {
@@ -117,14 +277,14 @@ export function SignatureForm() {
 
   if (submitStatus === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border border-gray-100">
+          <div className="w-16 h-16 bg-[#fbb624] bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-10 h-10 text-[#fbb624]" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Merci !</h2>
           <p className="text-gray-600">
-            Votre signature a été enregistrée avec succès. Vous recevrez une confirmation par courriel.
+            Votre signature a été enregistrée avec succès.
           </p>
           <p className="text-sm text-gray-500 mt-4">
             Vous serez redirigé automatiquement dans 5 secondes...
@@ -135,22 +295,28 @@ export function SignatureForm() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-gray-50">
       <div className="max-w-2xl mx-auto">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <img 
+            src="https://www.clickon.solutions/clickon-logo.png" 
+            alt="ClickOn Logo" 
+            className="h-8 md:h-12"
+          />
+        </div>
+        
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Signature de contrat</h1>
-          <p className="text-gray-600">
-            Veuillez lire attentivement le contrat et remplir le formulaire ci-dessous pour valider votre accord.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Onboarding ClickOn</h1>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Personal Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              <h3 className="text-lg font-semibold text-gray-900 border-b-2 border-gray-100 pb-2">
                 Vos informations
               </h3>
               
@@ -163,9 +329,10 @@ export function SignatureForm() {
                     type="text"
                     id="firstName"
                     name="firstName"
+                    ref={isFirstMissingField('firstName') ? setFirstMissingFieldRefCallback : null}
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="input-field"
+                    className={getFieldClass('firstName')}
                     placeholder="Jean"
                     required
                   />
@@ -179,9 +346,10 @@ export function SignatureForm() {
                     type="text"
                     id="lastName"
                     name="lastName"
+                    ref={isFirstMissingField('lastName') ? setFirstMissingFieldRefCallback : null}
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="input-field"
+                    className={getFieldClass('lastName')}
                     placeholder="Dupont"
                     required
                   />
@@ -196,9 +364,10 @@ export function SignatureForm() {
                   type="email"
                   id="email"
                   name="email"
+                  ref={isFirstMissingField('email') ? setFirstMissingFieldRefCallback : null}
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className={getFieldClass('email')}
                   placeholder="jean.dupont@exemple.com"
                   required
                 />
@@ -212,9 +381,10 @@ export function SignatureForm() {
                   type="tel"
                   id="phone"
                   name="phone"
+                  ref={isFirstMissingField('phone') ? setFirstMissingFieldRefCallback : null}
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className={getFieldClass('phone')}
                   placeholder="514-555-0123"
                   required
                 />
@@ -228,9 +398,10 @@ export function SignatureForm() {
                   type="text"
                   id="streetAddress"
                   name="streetAddress"
+                  ref={isFirstMissingField('streetAddress') ? setFirstMissingFieldRefCallback : null}
                   value={formData.streetAddress}
                   onChange={handleInputChange}
-                  className="input-field"
+                  className={getFieldClass('streetAddress')}
                   placeholder="123 rue Principale"
                   required
                 />
@@ -247,7 +418,8 @@ export function SignatureForm() {
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className="input-field"
+                    ref={isFirstMissingField('city') ? setFirstMissingFieldRefCallback : null}
+                    className={getFieldClass('city')}
                     placeholder="Montréal"
                     required
                   />
@@ -262,7 +434,8 @@ export function SignatureForm() {
                     name="province"
                     value={formData.province}
                     onChange={handleInputChange}
-                    className="input-field"
+                    ref={isFirstMissingField('province') ? setFirstMissingFieldRefCallback : null}
+                    className={getFieldClass('province')}
                     required
                   >
                     <option value="">Sélectionner...</option>
@@ -292,7 +465,8 @@ export function SignatureForm() {
                     name="postalCode"
                     value={formData.postalCode}
                     onChange={handleInputChange}
-                    className="input-field"
+                    ref={isFirstMissingField('postalCode') ? setFirstMissingFieldRefCallback : null}
+                    className={getFieldClass('postalCode')}
                     placeholder="H2X 1Y4"
                     required
                   />
@@ -302,7 +476,7 @@ export function SignatureForm() {
 
             {/* Checkboxes */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+              <h3 className="text-lg font-semibold text-gray-900 border-b-2 border-gray-100 pb-2">
                 Consentements requis
               </h3>
 
@@ -319,12 +493,8 @@ export function SignatureForm() {
                   En cochant cette case, j'accepte l'{' '}
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsPDFOpen(true)
-                    }}
-                    className="text-primary-600 hover:text-primary-800 underline font-medium hover:pointer"
+                    onClick={handlePDFClick}
+                    className="text-[#fbb624] hover:text-[#e5a520] underline font-semibold hover:pointer"
                   >
                   entente de service
                   </button>
@@ -336,7 +506,7 @@ export function SignatureForm() {
             {/* Acceptance Text */}
             <div className="space-y-2">
               <label htmlFor="acceptanceText" className="block text-sm font-medium text-gray-700">
-                Pour confirmer votre accord, veuillez inscrire votre nom complet ou « j'accepte » ci-dessous <span className="text-red-500">*</span>
+                Pour confirmer votre accord, veuillez inscrire « j'accepte » ci-dessous <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -346,16 +516,22 @@ export function SignatureForm() {
                 onChange={handleInputChange}
                 className={`input-field ${
                   isAcceptanceValid 
-                    ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
+                    ? 'border-[#fbb624] focus:ring-[#fbb624] focus:border-[#fbb624]'
                     : ''
                 }`}
-                placeholder="Votre signature"
+                placeholder="j'accepte"
                 required
               />
               {isAcceptanceValid && (
-                <p className="text-sm text-green-600 flex items-center gap-1">
+                <p className="text-sm text-[#fbb624] flex items-center gap-1">
                   <CheckCircle className="w-4 h-4" />
                   Signature enregistree
+                </p>
+              )}
+              {formData.acceptanceText.trim().length > 0 && !isAcceptanceValid && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  Veuillez inscrire exactement « j'accepte »
                 </p>
               )}
             </div>
@@ -395,15 +571,11 @@ export function SignatureForm() {
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Besoin d'aide ? Contactez-nous à support@exemple.com
-        </p>
       </div>
 
       {/* PDF Modal */}
       <PDFViewer
-        pdfUrl={PDF_URL}
+        pdfUrl={filledPdfUrl || PDF_URL}
         isOpen={isPDFOpen}
         onClose={() => setIsPDFOpen(false)}
       />

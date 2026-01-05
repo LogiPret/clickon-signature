@@ -79,7 +79,7 @@ export function PDFViewer({ pdfUrl, isOpen, onClose }: PDFViewerProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-600" />
+            <FileText className="w-5 h-5 text-[#fbb624]" />
             <h2 className="text-base sm:text-lg font-semibold text-gray-900">Contrat</h2>
           </div>
           <button
@@ -144,7 +144,7 @@ export function PDFViewer({ pdfUrl, isOpen, onClose }: PDFViewerProps) {
         <div className="flex-1 overflow-auto p-2 sm:p-4 bg-gray-100 flex justify-center">
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#fbb624]" />
               <span className="mt-3 text-sm text-gray-600">Chargement...</span>
             </div>
           )}
@@ -188,12 +188,12 @@ export function PDFButton({ onClick }: PDFButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all duration-200 group"
+      className="w-full flex items-center justify-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-xl bg-white hover:bg-gray-50 hover:border-[#fbb624] transition-all duration-200 group"
     >
-      <FileText className="w-8 h-8 text-blue-600 group-hover:scale-110 transition-transform" />
+      <FileText className="w-8 h-8 text-[#fbb624] group-hover:scale-110 transition-transform" />
       <div className="text-left">
-        <p className="font-medium text-blue-900">Consulter le contrat</p>
-        <p className="text-sm text-blue-600">Cliquez pour lire le document PDF</p>
+        <p className="font-semibold text-gray-900">Consulter le contrat</p>
+        <p className="text-sm text-gray-600">Cliquez pour lire le document PDF</p>
       </div>
     </button>
   )
